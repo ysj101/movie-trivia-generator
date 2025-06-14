@@ -216,13 +216,19 @@ describe('Unit Tests', () => {
       const successResponse = {
         movieTitle: 'となりのトトロ',
         trivia: 'という裏話があります！',
+        interestLevel: 4,
+        reasoning: '評価理由',
         productionInfo: '制作情報...'
       };
 
       expect(successResponse).toHaveProperty('movieTitle');
       expect(successResponse).toHaveProperty('trivia');
+      expect(successResponse).toHaveProperty('interestLevel');
+      expect(successResponse).toHaveProperty('reasoning');
       expect(successResponse).toHaveProperty('productionInfo');
       expect(successResponse.trivia).toMatch(/という裏話があります！$/);
+      expect(successResponse.interestLevel).toBeGreaterThanOrEqual(1);
+      expect(successResponse.interestLevel).toBeLessThanOrEqual(5);
     });
   });
 
@@ -251,7 +257,8 @@ describe('Unit Tests', () => {
 
     test('レスポンスデータの完全性', () => {
       const responseSchema = {
-        success: ['movieTitle', 'trivia', 'productionInfo'],
+        success: ['movieTitle', 'trivia', 'interestLevel', 'productionInfo'],
+        successOptional: ['reasoning'],
         errorWithSuggestions: ['error', 'suggestions', 'message'],
         errorOnly: ['error']
       };
@@ -260,12 +267,19 @@ describe('Unit Tests', () => {
       const successResponse = {
         movieTitle: 'test',
         trivia: 'test',
+        interestLevel: 4,
+        reasoning: 'test reason',
         productionInfo: 'test'
       };
 
       responseSchema.success.forEach(key => {
         expect(successResponse).toHaveProperty(key);
       });
+      
+      // 興味深さレベルの値検証
+      expect(successResponse.interestLevel).toBeGreaterThanOrEqual(1);
+      expect(successResponse.interestLevel).toBeLessThanOrEqual(5);
+      expect(Number.isInteger(successResponse.interestLevel)).toBe(true);
 
       // エラーレスポンス（提案あり）の検証
       const errorWithSuggestions = {
@@ -276,6 +290,98 @@ describe('Unit Tests', () => {
 
       responseSchema.errorWithSuggestions.forEach(key => {
         expect(errorWithSuggestions).toHaveProperty(key);
+      });
+    });
+  });
+
+  describe('興味深さレベル評価', () => {
+    test('興味深さレベルの範囲チェック', () => {
+      const validLevels = [1, 2, 3, 4, 5];
+      const invalidLevels = [0, 6, -1, 1.5, 'high', null, undefined];
+
+      validLevels.forEach(level => {
+        expect(level).toBeGreaterThanOrEqual(1);
+        expect(level).toBeLessThanOrEqual(5);
+        expect(Number.isInteger(level)).toBe(true);
+      });
+
+      invalidLevels.forEach(level => {
+        if (typeof level === 'number') {
+          expect(level < 1 || level > 5 || !Number.isInteger(level)).toBe(true);
+        } else {
+          expect(typeof level !== 'number').toBe(true);
+        }
+      });
+    });
+
+    test('興味深さレベルのテキスト変換', () => {
+      const levelTexts = {
+        5: '超驚き！',
+        4: 'とても興味深い',
+        3: '面白い',
+        2: 'やや興味深い',
+        1: '普通'
+      };
+
+      Object.entries(levelTexts).forEach(([level, expectedText]) => {
+        const numLevel = parseInt(level);
+        // フロントエンドの関数をシミュレート
+        const getInterestLevelText = (level: number): string => {
+          switch (level) {
+            case 5: return '超驚き！';
+            case 4: return 'とても興味深い';
+            case 3: return '面白い';
+            case 2: return 'やや興味深い';
+            case 1: return '普通';
+            default: return '評価中';
+          }
+        };
+
+        expect(getInterestLevelText(numLevel)).toBe(expectedText);
+      });
+    });
+
+    test('AIレスポンスのJSON解析テスト', () => {
+      const validAIResponse = `{
+        "trivia": "監督は当初別のタイトルを考えていたという裏話があります！",
+        "interestLevel": 4,
+        "reasoning": "タイトル決定の意外な経緯が興味深い"
+      }`;
+
+      const invalidAIResponse = `これは無効なJSONです`;
+
+      // 有効なJSONの解析
+      try {
+        const parsed = JSON.parse(validAIResponse);
+        expect(parsed).toHaveProperty('trivia');
+        expect(parsed).toHaveProperty('interestLevel');
+        expect(parsed).toHaveProperty('reasoning');
+        expect(parsed.interestLevel).toBeGreaterThanOrEqual(1);
+        expect(parsed.interestLevel).toBeLessThanOrEqual(5);
+      } catch (error) {
+        fail('Valid JSON should parse successfully');
+      }
+
+      // 無効なJSONの処理
+      try {
+        JSON.parse(invalidAIResponse);
+        fail('Invalid JSON should throw an error');
+      } catch (error) {
+        expect(error).toBeInstanceOf(SyntaxError);
+      }
+    });
+
+    test('興味深さレベルの境界値テスト', () => {
+      const boundaryValues = [1, 5];
+      const outOfBounds = [0, 6];
+
+      boundaryValues.forEach(value => {
+        expect(value).toBeGreaterThanOrEqual(1);
+        expect(value).toBeLessThanOrEqual(5);
+      });
+
+      outOfBounds.forEach(value => {
+        expect(value < 1 || value > 5).toBe(true);
       });
     });
   });

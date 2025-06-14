@@ -215,6 +215,18 @@ describe.skip('Movie Trivia Generator Integration Tests', () => {
         // 日本語が含まれることをチェック
         expect(data.trivia).toMatch(/[ひらがなカタカナ漢字]/);
         
+        // 興味深さレベルの品質チェック
+        expect(data.interestLevel).toBeGreaterThanOrEqual(1);
+        expect(data.interestLevel).toBeLessThanOrEqual(5);
+        expect(Number.isInteger(data.interestLevel)).toBe(true);
+        
+        // 評価理由の品質チェック
+        if (data.reasoning) {
+          expect(typeof data.reasoning).toBe('string');
+          expect(data.reasoning.length).toBeGreaterThan(5);
+          expect(data.reasoning).toMatch(/[ひらがなカタカナ漢字]/);
+        }
+        
         // 制作情報の品質チェック
         expect(data.productionInfo.length).toBeGreaterThan(100);
         expect(data.productionInfo).toMatch(/[ひらがなカタカナ漢字]/);

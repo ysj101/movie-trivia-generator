@@ -31,8 +31,15 @@ describe('/api/generate-trivia', () => {
       if (response.status === 200) {
         expect(data).toHaveProperty('movieTitle');
         expect(data).toHaveProperty('trivia');
+        expect(data).toHaveProperty('interestLevel');
         expect(data).toHaveProperty('productionInfo');
         expect(data.trivia).toMatch(/という裏話があります！/);
+        expect(typeof data.interestLevel).toBe('number');
+        expect(data.interestLevel).toBeGreaterThanOrEqual(1);
+        expect(data.interestLevel).toBeLessThanOrEqual(5);
+        if (data.reasoning) {
+          expect(typeof data.reasoning).toBe('string');
+        }
       } else if (response.status === 404) {
         expect(data).toHaveProperty('error');
       } else {
@@ -57,6 +64,8 @@ describe('/api/generate-trivia', () => {
       if (response.status === 200) {
         expect(data.trivia).toContain('という裏話があります！');
         expect(data.productionInfo).toBeTruthy();
+        expect(data.interestLevel).toBeGreaterThanOrEqual(1);
+        expect(data.interestLevel).toBeLessThanOrEqual(5);
       } else {
         // エラーレスポンスでもエラーメッセージがあることを確認
         expect(data).toHaveProperty('error');
@@ -230,6 +239,8 @@ describe('/api/generate-trivia', () => {
         expect(data).toEqual({
           movieTitle: expect.any(String),
           trivia: expect.any(String),
+          interestLevel: expect.any(Number),
+          reasoning: expect.any(String),
           productionInfo: expect.any(String)
         });
 
@@ -237,6 +248,11 @@ describe('/api/generate-trivia', () => {
         expect(data.trivia).toMatch(/という裏話があります！$/);
         expect(data.trivia.length).toBeGreaterThan(50); // 適切な長さ
         expect(data.productionInfo.length).toBeGreaterThan(100); // 十分な制作情報
+        
+        // 興味深さレベルの確認
+        expect(data.interestLevel).toBeGreaterThanOrEqual(1);
+        expect(data.interestLevel).toBeLessThanOrEqual(5);
+        expect(Number.isInteger(data.interestLevel)).toBe(true);
       }
     });
 
@@ -256,6 +272,64 @@ describe('/api/generate-trivia', () => {
         suggestions: expect.any(Array),
         message: expect.any(String)
       });
+    });
+  });
+
+  describe('興味深さレベル評価テスト', () => {
+    test('AIが正しい範囲で興味深さレベルを評価する', async () => {
+      const request = new NextRequest('http://localhost:3000/api/generate-trivia', {
+        method: 'POST',
+        body: JSON.stringify({ movieTitle: 'となりのトトロ' }),
+        headers: { 'Content-Type': 'application/json' },
+      });
+
+      const response = await POST(request);
+      const data = await response.json();
+
+      if (response.status === 200) {
+        // 興味深さレベルが1-5の範囲内
+        expect(data.interestLevel).toBeGreaterThanOrEqual(1);
+        expect(data.interestLevel).toBeLessThanOrEqual(5);
+        expect(Number.isInteger(data.interestLevel)).toBe(true);
+
+        // 評価理由が存在することを確認
+        if (data.reasoning) {
+          expect(typeof data.reasoning).toBe('string');
+          expect(data.reasoning.length).toBeGreaterThan(0);
+        }
+      }
+    });
+
+    test('異なる映画で異なる評価レベルが返される可能性', async () => {
+      const movies = ['となりのトトロ', '君の名は。'];
+      const results = [];
+
+      for (const movie of movies) {
+        const request = new NextRequest('http://localhost:3000/api/generate-trivia', {
+          method: 'POST',
+          body: JSON.stringify({ movieTitle: movie }),
+          headers: { 'Content-Type': 'application/json' },
+        });
+
+        const response = await POST(request);
+        const data = await response.json();
+
+        if (response.status === 200) {
+          results.push({
+            movie,
+            interestLevel: data.interestLevel,
+            reasoning: data.reasoning
+          });
+        }
+      }
+
+      // 少なくとも1つの結果があることを確認
+      if (results.length > 0) {
+        results.forEach(result => {
+          expect(result.interestLevel).toBeGreaterThanOrEqual(1);
+          expect(result.interestLevel).toBeLessThanOrEqual(5);
+        });
+      }
     });
   });
 });

@@ -5,6 +5,8 @@ import { useState } from 'react';
 interface TriviaResponse {
   movieTitle: string;
   trivia: string;
+  interestLevel: number;
+  reasoning?: string;
   productionInfo: string;
 }
 
@@ -13,6 +15,18 @@ interface ErrorResponse {
   suggestions?: string[];
   message?: string;
 }
+
+// 興味深さレベルのテキスト取得関数
+const getInterestLevelText = (level: number): string => {
+  switch (level) {
+    case 5: return '超驚き！';
+    case 4: return 'とても興味深い';
+    case 3: return '面白い';
+    case 2: return 'やや興味深い';
+    case 1: return '普通';
+    default: return '評価中';
+  }
+};
 
 export default function Home() {
   const [movieTitle, setMovieTitle] = useState('');
@@ -172,18 +186,38 @@ export default function Home() {
                   </div>
                   
                   {/* カード下部のアクセント */}
-                  <div className="mt-6 pt-4 border-t border-gray-100 flex items-center justify-between">
-                    <div className="flex items-center space-x-2">
-                      <div className="w-3 h-3 bg-gradient-to-r from-purple-500 to-blue-500 rounded-full"></div>
-                      <span className="text-sm text-gray-500 font-medium">制作秘話</span>
+                  <div className="mt-6 pt-4 border-t border-gray-100">
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center space-x-2">
+                        <div className="w-3 h-3 bg-gradient-to-r from-purple-500 to-blue-500 rounded-full"></div>
+                        <span className="text-sm text-gray-500 font-medium">制作秘話</span>
+                      </div>
+                      <div className="flex items-center space-x-1" title={`興味深さレベル: ${trivia.interestLevel}/5${trivia.reasoning ? ` (${trivia.reasoning})` : ''}`}>
+                        {[...Array(5)].map((_, i) => (
+                          <svg 
+                            key={i} 
+                            className={`w-4 h-4 ${i < trivia.interestLevel ? 'text-yellow-400' : 'text-gray-300'} fill-current transition-colors duration-200`} 
+                            viewBox="0 0 20 20"
+                          >
+                            <path d="M10 15l-5.878 3.09 1.123-6.545L.489 6.91l6.572-.955L10 0l2.939 5.955 6.572.955-4.756 4.635 1.123 6.545z"/>
+                          </svg>
+                        ))}
+                        <span className="ml-2 text-xs text-gray-400">
+                          {trivia.interestLevel}/5 {getInterestLevelText(trivia.interestLevel)}
+                        </span>
+                      </div>
                     </div>
-                    <div className="flex items-center space-x-1">
-                      {[...Array(5)].map((_, i) => (
-                        <svg key={i} className="w-4 h-4 text-yellow-400 fill-current" viewBox="0 0 20 20">
-                          <path d="M10 15l-5.878 3.09 1.123-6.545L.489 6.91l6.572-.955L10 0l2.939 5.955 6.572.955-4.756 4.635 1.123 6.545z"/>
-                        </svg>
-                      ))}
-                    </div>
+                    {trivia.reasoning && (
+                      <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
+                        <div className="flex items-center space-x-2">
+                          <svg className="w-4 h-4 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+                          </svg>
+                          <span className="text-sm font-medium text-amber-800">AI評価理由</span>
+                        </div>
+                        <p className="text-sm text-amber-700 mt-1">{trivia.reasoning}</p>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
