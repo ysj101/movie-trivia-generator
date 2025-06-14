@@ -110,25 +110,39 @@ async function scrapeMovieProduction(movieTitle: string) {
       const title = document.title;
       const url = window.location.href;
       
-      // 映画ページではないページの判定
-      const isNotMoviePage = 
+      // 明らかに映画ページではないページの判定
+      const isDefinitelyNotMoviePage = 
         title.includes('シリーズ') || 
         title.includes('曖昧さ回避') || 
         url.includes('シリーズ') ||
-        // 概念や一般的な用語のページ
+        // 概念や一般的な用語のページ（ただし、より厳格に判定）
         (!title.includes('映画') && !title.includes('(') && !url.includes('映画') && 
-         !title.includes('年') && !title.includes('劇場版'));
+         !title.includes('年') && !title.includes('劇場版') && 
+         // 監督名などの明らかに映画以外のページ
+         (title.includes('監督') || title.includes('俳優') || title.includes('概念')));
+      
+      // 映画ページの可能性があるかチェック
+      const couldBeMoviePage = 
+        title.includes('映画') || 
+        title.includes('(') || 
+        url.includes('映画') || 
+        title.includes('年') || 
+        title.includes('劇場版') ||
+        // タイトルが比較的短く、具体的な作品名らしい
+        (title.length < 50 && !title.includes('一覧') && !title.includes('カテゴリ'));
       
       return {
         hasNoArticle: !!noArticle,
         hasSearchResult: !!searchResult,
-        isNotMoviePage,
+        isDefinitelyNotMoviePage,
+        couldBeMoviePage,
         title,
         url
       };
     });
     
-    if (pageInfo.hasNoArticle || pageInfo.hasSearchResult || pageInfo.isNotMoviePage) {
+    // 明らかにページが存在しない、または明らかに映画ページではない場合
+    if (pageInfo.hasNoArticle || pageInfo.hasSearchResult || pageInfo.isDefinitelyNotMoviePage) {
       return { error: 'PAGE_NOT_FOUND' };
     }
     
@@ -181,7 +195,13 @@ async function scrapeMovieProduction(movieTitle: string) {
     });
     
     if (!productionSection) {
-      return { error: 'NO_PRODUCTION_SECTION' };
+      // 映画ページの可能性がある場合は制作情報なしとして返す
+      if (pageInfo.couldBeMoviePage) {
+        return { error: 'NO_PRODUCTION_SECTION' };
+      } else {
+        // 映画ページではなさそうな場合はページが見つからないとして返す
+        return { error: 'PAGE_NOT_FOUND' };
+      }
     }
     
     return { productionSection };
