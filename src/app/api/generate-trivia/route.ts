@@ -33,27 +33,107 @@ async function searchWikipediaMovies(movieTitle: string): Promise<SearchSuggesti
       
       const suggestions = await page.evaluate(() => {
         const results = Array.from(document.querySelectorAll('.mw-search-result-heading a'));
-        return results.slice(0, 10).map(link => ({
+        const allResults = results.slice(0, 15).map(link => ({
           title: link.textContent?.trim() || '',
           url: link.getAttribute('href') || ''
-        })).filter(item => 
-          item.title && 
-          (item.title.includes('映画') || 
-           item.title.includes('(') || 
-           item.title.includes('シリーズ') ||
-           item.title.includes('作品') ||
-           item.title.includes('エピソード') ||
-           // 年代を含む映画タイトル（例：2001年、1990年代など）
-           /\d{4}年/.test(item.title) ||
-           // 監督や製作会社を含むタイトル
-           item.title.includes('監督') ||
-           item.title.includes('製作') ||
-           // アニメ映画関連
-           item.title.includes('劇場版') ||
-           item.title.includes('アニメ') ||
-           // 邦画・洋画の一般的なパターン
-           item.title.includes('の') && (item.title.length <= 50))
-        );
+        }));
+        
+        return allResults.filter(item => {
+          if (!item.title) return false;
+          
+          const title = item.title;
+          
+          // 明らかに映画タイトルでないページを除外
+          const excludePatterns = [
+            'カテゴリ:',
+            'Template:',
+            'プロジェクト:',
+            'Help:',
+            'Wikipedia:',
+            '一覧',
+            '年の映画',
+            '映画祭',
+            '映画館',
+            '映画会社',
+            '映画産業',
+            '映画理論',
+            '映画史',
+            '映画批評',
+            '映画音楽',
+            '映画監督一覧',
+            '俳優一覧',
+            '声優一覧',
+            'のフィルモグラフィー',
+            'の出演作品',
+            'シリーズ',
+            '○○賞',
+            '賞受賞',
+            'について',
+            'とは',
+            '俳優',
+            '監督',
+            '声優',
+            '製作会社',
+            'スタジオ',
+            '配給'
+          ];
+          
+          // 汎用的すぎるタイトルを除外
+          const genericTerms = [
+            /^映画$/,
+            /^\d{4}年$/,
+            /^\d{4}年の映画$/,
+            /^\d{4}年代$/,
+            /^映画館$/,
+            /^映画祭$/,
+            /^日本映画$/,
+            /^アメリカ映画$/,
+            /^ハリウッド映画$/,
+            /^洋画$/,
+            /^邦画$/
+          ];
+          
+          // 除外パターンに該当する場合はスキップ
+          if (excludePatterns.some(pattern => title.includes(pattern))) {
+            return false;
+          }
+          
+          // 汎用的すぎるタイトルを除外
+          if (genericTerms.some(pattern => pattern.test(title))) {
+            return false;
+          }
+          
+          // 映画を示すポジティブな指標
+          const movieIndicators = [
+            // 「(年の映画)」形式
+            /\(\d{4}年.*映画\)/.test(title),
+            // 「劇場版」を含む
+            title.includes('劇場版'),
+            // 「映画」を含むが除外項目でない
+            title.includes('映画') && !excludePatterns.some(pattern => title.includes(pattern)),
+            // 特定の映画形式パターン
+            /^.{1,30}\s*\(\d{4}年.*映画\)/.test(title), // 「タイトル (2020年の映画)」
+            /^.{1,30}\s*\(\d{4}年.*作品\)/.test(title), // 「タイトル (2020年の作品)」
+          ];
+          
+          // 具体的な映画タイトルの特徴（慎重に判定）
+          const possibleMovieTitle = (
+            title.length >= 2 && 
+            title.length <= 35 && 
+            !title.includes('一覧') && 
+            !title.includes('について') &&
+            !title.includes('とは') &&
+            !title.includes('年代') &&
+            !title.includes('世紀') &&
+            // 一般的な映画タイトルの文字パターン
+            /^[ぁ-んァ-ヶー一-龠a-zA-Z0-9\s\-・（）()！？．。、]+$/.test(title)
+          );
+          
+          // デバッグ用ログ
+          console.log(`Title: "${title}", movieIndicators: ${movieIndicators.some(Boolean)}, possibleMovieTitle: ${possibleMovieTitle}, hasParentheses: ${title.includes('(')}`);
+          
+          return movieIndicators.some(Boolean) || possibleMovieTitle;
+        });
       });
       
       allSuggestions = [...allSuggestions, ...suggestions];
@@ -67,16 +147,31 @@ async function searchWikipediaMovies(movieTitle: string): Promise<SearchSuggesti
         index === self.findIndex(t => t.title === item.title)
       )
       .sort((a, b) => {
-        // 映画関連のキーワードによるスコアリング
+        // 映画タイトルの信頼性によるスコアリング
         const getScore = (title: string) => {
           let score = 0;
-          if (title.includes('映画')) score += 3;
-          if (title.includes('(')) score += 2;
-          if (title.includes('劇場版')) score += 2;
-          if (title.includes('エピソード')) score += 2;
+          
+          // 高確度の映画指標
+          if (/\(\d{4}年.*映画\)/.test(title)) score += 10; // 「(2020年の映画)」形式
+          if (/\(\d{4}年.*作品\)/.test(title)) score += 8;  // 「(2020年の作品)」形式
+          if (title.includes('劇場版')) score += 7;          // 劇場版
+          
+          // 中確度の指標
+          if (title.includes('映画') && title.includes('(')) score += 5;
+          if (title.includes('映画') && !title.includes('館') && !title.includes('祭')) score += 3;
+          
+          // 低確度の指標
+          if (title.includes('(') && title.length <= 25) score += 2; // 短いタイトルで括弧付き
           if (/\d{4}年/.test(title)) score += 1;
-          if (title.includes('監督') || title.includes('製作')) score += 1;
-          if (title.includes('シリーズ')) score -= 1; // シリーズページは優先度を下げる
+          
+          // ペナルティ
+          if (title.includes('シリーズ')) score -= 3;
+          if (title.includes('一覧')) score -= 5;
+          if (title.includes('について')) score -= 5;
+          if (title.includes('とは')) score -= 5;
+          if (title.includes('俳優') || title.includes('監督') || title.includes('声優')) score -= 3;
+          if (title.length > 40) score -= 2; // 長すぎるタイトル
+          
           return score;
         };
         
