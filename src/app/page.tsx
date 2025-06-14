@@ -8,11 +8,18 @@ interface TriviaResponse {
   productionInfo: string;
 }
 
+interface ErrorResponse {
+  error: string;
+  suggestions?: string[];
+  message?: string;
+}
+
 export default function Home() {
   const [movieTitle, setMovieTitle] = useState('');
   const [trivia, setTrivia] = useState<TriviaResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [suggestions, setSuggestions] = useState<string[]>([]);
 
   const generateTrivia = async () => {
     if (!movieTitle.trim()) {
@@ -23,6 +30,7 @@ export default function Home() {
     setLoading(true);
     setError('');
     setTrivia(null);
+    setSuggestions([]);
 
     try {
       const response = await fetch('/api/generate-trivia', {
@@ -36,7 +44,13 @@ export default function Home() {
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error || 'エラーが発生しました');
+        if (data.suggestions) {
+          setError(data.error);
+          setSuggestions(data.suggestions);
+        } else {
+          setError(data.error || 'エラーが発生しました');
+        }
+        return;
       }
 
       setTrivia(data);
@@ -71,7 +85,7 @@ export default function Home() {
                 value={movieTitle}
                 onChange={(e) => setMovieTitle(e.target.value)}
                 placeholder="例: 君の名は。"
-                className="flex-1 px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                className="flex-1 px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-gray-900 font-medium"
                 onKeyPress={(e) => e.key === 'Enter' && generateTrivia()}
               />
               <button
@@ -86,7 +100,27 @@ export default function Home() {
 
           {error && (
             <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-md">
-              <p className="text-red-700">{error}</p>
+              <p className="text-red-700 mb-3">{error}</p>
+              {suggestions.length > 0 && (
+                <div>
+                  <p className="text-gray-700 text-sm mb-2">以下の映画はいかがですか？</p>
+                  <div className="flex flex-wrap gap-2">
+                    {suggestions.map((suggestion, index) => (
+                      <button
+                        key={index}
+                        onClick={() => {
+                          setMovieTitle(suggestion);
+                          setError('');
+                          setSuggestions([]);
+                        }}
+                        className="px-3 py-1 text-sm bg-blue-100 text-blue-700 rounded-full hover:bg-blue-200 transition-colors"
+                      >
+                        {suggestion}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
