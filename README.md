@@ -51,10 +51,6 @@ npm run dev
 
 *成功例：「となりのトトロ」でトリビア生成*
 
-### 提案機能のデモ
-![Suggestion Demo](demo/suggestion-demo.gif)
-
-*映画が見つからない場合の提案機能*
 
 ## 📝 使用方法
 
