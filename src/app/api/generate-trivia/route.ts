@@ -11,6 +11,9 @@ async function searchWikipediaMovies(movieTitle: string) {
   const browser = await puppeteer.launch({ headless: true });
   const page = await browser.newPage();
   
+  // 適切なUser-Agentを設定
+  await page.setUserAgent('Mozilla/5.0 (compatible; MovieTriviaBot/1.0; Educational use)');
+  
   try {
     // 複数の検索パターンを試す
     const searchQueries = [
@@ -92,6 +95,9 @@ async function searchWikipediaMovies(movieTitle: string) {
 async function scrapeMovieProduction(movieTitle: string) {
   const browser = await puppeteer.launch({ headless: true });
   const page = await browser.newPage();
+  
+  // 適切なUser-Agentを設定
+  await page.setUserAgent('Mozilla/5.0 (compatible; MovieTriviaBot/1.0; Educational use)');
   
   try {
     const url = `https://ja.wikipedia.org/wiki/${encodeURIComponent(movieTitle)}`;

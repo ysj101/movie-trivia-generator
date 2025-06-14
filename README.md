@@ -1,36 +1,155 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# 🎬 映画トリビアジェネレーター
 
-## Getting Started
+日本語Wikipediaから映画の制作情報を取得し、Google Gemini AIを使って興奮できるトリビアを生成するNext.jsアプリケーションです。
 
-First, run the development server:
+## ✨ 機能
+
+- 📝 映画タイトル入力による自動トリビア生成
+- 🔍 Wikipedia制作情報の自動スクレイピング
+- 🤖 Gemini AIによる魅力的なトリビア作成
+- 💡 映画が見つからない場合の智能的な提案機能
+- 🎨 美しいカード型UIデザイン
+- 📱 レスポンシブ対応
+
+## 🛠️ 技術スタック
+
+- **Frontend**: Next.js 15.3.3 (App Router) + React 19
+- **Styling**: Tailwind CSS 4.1
+- **AI**: Google Gemini 1.5 Flash
+- **Web Scraping**: Puppeteer
+- **Language**: TypeScript
+- **Development**: Turbopack
+
+## 🚀 セットアップ
+
+### 1. 依存関係のインストール
+
+```bash
+npm install
+```
+
+### 2. 環境変数の設定
+
+`.env.local` ファイルを作成し、Gemini APIキーを設定：
+
+```bash
+GEMINI_API_KEY=your_gemini_api_key_here
+```
+
+### 3. 開発サーバーの起動
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+ブラウザで [http://localhost:3000](http://localhost:3000) を開いてアプリを確認できます。
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## 📝 使用方法
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+1. 映画タイトルを入力（例：「君の名は。」「となりのトトロ」）
+2. 「トリビア生成」ボタンをクリック
+3. AIが生成した驚きのトリビアを楽しむ
+4. 詳細な制作情報も確認可能
 
-## Learn More
+### 提案機能
 
-To learn more about Next.js, take a look at the following resources:
+映画が見つからない場合、関連する映画の候補が自動で表示されます：
+- 「スターウォーズ」→「スター・ウォーズ エピソード4/新たなる希望」など
+- 「アバター」→「アバター (2009年の映画)」など
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## 🏗️ プロジェクト構造
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+```
+src/
+├── app/
+│   ├── api/
+│   │   └── generate-trivia/
+│   │       └── route.ts          # メインAPI（スクレイピング+AI生成）
+│   ├── page.tsx                   # フロントエンドUI
+│   ├── layout.tsx                 # レイアウト
+│   └── globals.css                # グローバルスタイル
+```
 
-## Deploy on Vercel
+## 🔧 開発コマンド
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+```bash
+# 開発サーバー起動（Turbopack使用）
+npm run dev
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+# プロダクションビルド
+npm run build
+
+# プロダクションサーバー起動
+npm start
+
+# Lint実行
+npm run lint
+```
+
+## 🎯 API仕様
+
+### `POST /api/generate-trivia`
+
+**リクエスト:**
+```json
+{
+  "movieTitle": "君の名は。"
+}
+```
+
+**レスポンス（成功）:**
+```json
+{
+  "movieTitle": "君の名は。",
+  "trivia": "新海誠監督は当初「夢と知りせば」というタイトルを...",
+  "productionInfo": "本作の着想は、新海が東日本大震災発生後の..."
+}
+```
+
+**レスポンス（提案あり）:**
+```json
+{
+  "error": "映画が見つかりませんでした",
+  "suggestions": ["スター・ウォーズ エピソード4/新たなる希望", ...],
+  "message": "以下の映画はいかがですか？"
+}
+```
+
+## 🎨 UI特徴
+
+- **トリビアカード**: グラデーション背景、ホバーエフェクト、星評価
+- **制作情報**: 展開可能な詳細カード
+- **エラーハンドリング**: クリック可能な映画提案
+- **レスポンシブ**: モバイル対応デザイン
+
+## 🌟 特別な実装
+
+- **日本語特化**: 日本語Wikipedia専用の最適化
+- **智能的検索**: 映画ページとシリーズページの自動判別
+- **エラー処理**: 曖昧な入力に対する提案機能
+- **パフォーマンス**: Turbopackによる高速開発ビルド
+
+## ⚖️ 利用規約・法的事項
+
+### スクレイピングについて
+- Wikipediaの公開情報のみを取得
+- 教育・エンターテイメント目的での利用
+- 過度な負荷をかけない設計
+- robots.txt及びWikipediaの利用規約に準拠
+
+### 免責事項
+- 本アプリケーションは教育目的で作成されています
+- スクレイピング機能の商用利用は推奨しません
+- 利用者は各サイトの利用規約を遵守してください
+- データの正確性について保証はありません
+
+### 推奨事項
+- **個人利用・学習目的**での使用を推奨
+- **大量リクエスト**は控えてください
+- **商用利用**前は法的確認を行ってください
+
+## 📄 ライセンス
+
+このプロジェクトはMITライセンスの下で公開されています。
+
+**注意**: MITライセンスはコード利用の自由を提供しますが、スクレイピング対象サイトの利用規約は別途遵守が必要です。
