@@ -44,6 +44,18 @@ npm run dev
 
 ブラウザで [http://localhost:3000](http://localhost:3000) を開いてアプリを確認できます。
 
+## 🎥 デモ
+
+### 基本的な使用方法
+![UI Demo](demo/ui-demo.gif)
+
+*成功例：「となりのトトロ」でトリビア生成*
+
+### 提案機能のデモ
+![Suggestion Demo](demo/suggestion-demo.gif)
+
+*映画が見つからない場合の提案機能*
+
 ## 📝 使用方法
 
 1. 映画タイトルを入力（例：「君の名は。」「となりのトトロ」）
@@ -84,6 +96,73 @@ npm start
 
 # Lint実行
 npm run lint
+
+# テスト実行
+npm test
+
+# テスト（監視モード）
+npm run test:watch
+
+# デモGIF作成ガイド表示
+npm run demo
+
+# 録画ファイルからGIF作成
+npm run demo:convert <録画ファイル> <出力名>
+
+# シンプルGIF変換（推奨）
+npm run gif <録画ファイル> <出力名> [サイズ]
+```
+
+## 📹 GIF作成手順（開発者向け）
+
+UIのデモGIFを作成する場合：
+
+1. **開発サーバー起動**
+   ```bash
+   npm run dev
+   ```
+
+2. **画面録画**
+   - macOS: `Shift + Cmd + 5` でスクリーンレコーディング
+   - Windows: ゲームバー（`Win + G`）またはOBS
+   - Linux: `recordmydesktop` または `kazam`
+
+3. **GIF変換**
+   ```bash
+   # ffmpegを使用（推奨・高品質）
+   ffmpeg -i recording.mov -vf "fps=10,scale=800:-1:flags=lanczos,palettegen" palette.png
+   ffmpeg -i recording.mov -i palette.png -filter_complex "fps=10,scale=800:-1:flags=lanczos[x];[x][1:v]paletteuse" demo/ui-demo.gif
+   
+   # シンプルな変換（品質は落ちるが簡単）
+   ffmpeg -i recording.mov -vf "fps=10,scale=800:-1" demo/ui-demo.gif
+   
+   # またはオンラインツール（cloudconvert.com等）を使用
+   ```
+
+4. **最適化**
+   ```bash
+   # gifsicleで圧縮（オプション）
+   gifsicle -O3 --resize-fit 800x600 demo/ui-demo.gif -o demo/ui-demo-optimized.gif
+   ```
+
+### トラブルシューティング
+
+**FFmpegエラーが出る場合:**
+```bash
+# シンプルな変換を試す
+npm run gif recording.mov ui-demo
+
+# または直接FFmpegで
+ffmpeg -i recording.mov -vf "fps=10,scale=800:-1" demo/ui-demo.gif
+```
+
+**ファイルサイズが大きい場合:**
+```bash
+# フレームレートを下げる
+ffmpeg -i input.mov -vf "fps=8,scale=600:-1" output.gif
+
+# 品質を下げる
+gifsicle -O3 --lossy=80 --resize-fit 600x400 input.gif -o output.gif
 ```
 
 ## 🎯 API仕様
