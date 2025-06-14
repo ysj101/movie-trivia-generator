@@ -1,18 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { GoogleGenerativeAI } from '@google/generative-ai';
 import puppeteer from 'puppeteer';
-
-// Gemini AI setup
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
-const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+import { generateTriviaWithAI } from '@/lib/gemini';
+import { 
+  TriviaRequest, 
+  ScrapingResult, 
+  SearchSuggestion 
+} from '@/types';
+import { WIKIPEDIA_CONFIG, ERROR_MESSAGES } from '@/lib/constants';
 
 // Wikipedia検索関数
-async function searchWikipediaMovies(movieTitle: string) {
+async function searchWikipediaMovies(movieTitle: string): Promise<SearchSuggestion[]> {
   const browser = await puppeteer.launch({ headless: true });
   const page = await browser.newPage();
   
   // 適切なUser-Agentを設定
-  await page.setUserAgent('Mozilla/5.0 (compatible; MovieTriviaBot/1.0; Educational use)');
+  await page.setUserAgent(WIKIPEDIA_CONFIG.USER_AGENT);
   
   try {
     // 複数の検索パターンを試す
@@ -92,15 +94,15 @@ async function searchWikipediaMovies(movieTitle: string) {
 }
 
 // スクレイピング関数
-async function scrapeMovieProduction(movieTitle: string) {
+async function scrapeMovieProduction(movieTitle: string): Promise<ScrapingResult | null> {
   const browser = await puppeteer.launch({ headless: true });
   const page = await browser.newPage();
   
   // 適切なUser-Agentを設定
-  await page.setUserAgent('Mozilla/5.0 (compatible; MovieTriviaBot/1.0; Educational use)');
+  await page.setUserAgent(WIKIPEDIA_CONFIG.USER_AGENT);
   
   try {
-    const url = `https://ja.wikipedia.org/wiki/${encodeURIComponent(movieTitle)}`;
+    const url = `${WIKIPEDIA_CONFIG.BASE_URL}${encodeURIComponent(movieTitle)}`;
     await page.goto(url, { waitUntil: 'networkidle2' });
     
     // ページが存在するかチェック（映画の個別ページかどうかも確認）
@@ -213,84 +215,14 @@ async function scrapeMovieProduction(movieTitle: string) {
   }
 }
 
-// トリビア生成と評価関数
-async function generateTriviaFromProduction(productionText: string, movieTitle: string) {
-  const prompt = `
-映画「${movieTitle}」の制作情報から、面白い映画トリビアを生成し、その興味深さレベルを評価してください。
-
-以下の制作情報を基に：
-${productionText}
-
-要求事項：
-1. 「●●という裏話があります！」の形式でトリビアを出力
-2. 3-4行程度で、興奮できるような内容
-3. 最も興味深く、驚きのある内容を1つだけ厳選
-4. 番号なし、リスト形式なしで1つのトリビアのみ
-5. 引用符号（[数字]）は除外して読みやすくする
-6. 読者が「えー！知らなかった！」と思うような最高の驚きの要素を含める
-
-トリビアの興味深さ評価基準：
-★★★★★ (5): 超驚き！誰も知らない秘話、制作現場の奇跡的エピソード
-★★★★☆ (4): とても興味深い、制作の重要な裏話や意外な事実
-★★★☆☆ (3): 面白い、一般的でない制作背景や工夫
-★★☆☆☆ (2): やや興味深い、基本的な制作情報
-★☆☆☆☆ (1): 普通、よく知られた一般的な情報
-
-回答は以下のJSON形式で出力してください：
-{
-  "trivia": "生成されたトリビア文章",
-  "interestLevel": 5,
-  "reasoning": "評価の理由（簡潔に）"
-}
-
-例：
-{
-  "trivia": "新海誠監督は当初「夢と知りせば」というタイトルを考えていたが、締切間近になって急遽方針転換！NHKラジオの名作と同じタイトル「君の名は。」を使うことに決めた、という裏話があります！実は最初は先行作品とのタイトル被りを嫌がっていたのに、最終的に「誰かにアクセスしやすいタイトル」として採用したなんて驚きです！",
-  "interestLevel": 4,
-  "reasoning": "タイトル決定の意外な経緯と監督の心境変化が興味深い"
-}
-`;
-
-  try {
-    const result = await model.generateContent(prompt);
-    const responseText = result.response.text();
-    
-    // JSONの解析を試みる
-    try {
-      const cleanedText = responseText.replace(/```json\n?|\n?```/g, '').trim();
-      const parsed = JSON.parse(cleanedText);
-      
-      // 必須フィールドの検証
-      if (parsed.trivia && typeof parsed.interestLevel === 'number') {
-        return {
-          trivia: parsed.trivia,
-          interestLevel: Math.max(1, Math.min(5, parsed.interestLevel)), // 1-5の範囲に制限
-          reasoning: parsed.reasoning || ''
-        };
-      }
-    } catch (parseError) {
-      console.warn('JSON parsing failed, extracting trivia from text:', parseError);
-    }
-    
-    // JSON解析に失敗した場合はテキストから抽出
-    return {
-      trivia: responseText,
-      interestLevel: 4, // デフォルト値
-      reasoning: 'テキスト形式で生成されたため、デフォルト評価'
-    };
-  } catch (error) {
-    console.error('Error generating trivia:', error);
-    throw error;
-  }
-}
 
 export async function POST(request: NextRequest) {
   try {
-    const { movieTitle } = await request.json();
+    const { movieTitle }: TriviaRequest = await request.json();
     
     if (!movieTitle) {
       return NextResponse.json(
-        { error: '映画タイトルが指定されていません' },
+        { error: ERROR_MESSAGES.NO_TITLE },
         { status: 400 }
       );
     }
@@ -317,7 +249,7 @@ export async function POST(request: NextRequest) {
       const suggestions = await searchWikipediaMovies(movieTitle);
       return NextResponse.json(
         { 
-          error: '映画が見つかりませんでした',
+          error: ERROR_MESSAGES.MOVIE_NOT_FOUND,
           suggestions: suggestions.map(s => s.title),
           message: '以下の映画はいかがですか？'
         },
@@ -327,13 +259,13 @@ export async function POST(request: NextRequest) {
     
     if (result.error === 'NO_PRODUCTION_SECTION') {
       return NextResponse.json(
-        { error: 'この映画の制作情報が見つかりませんでした' },
+        { error: ERROR_MESSAGES.NO_PRODUCTION_INFO },
         { status: 404 }
       );
     }
     
     // トリビアを生成
-    const triviaResult = await generateTriviaFromProduction(result.productionSection!, movieTitle);
+    const triviaResult = await generateTriviaWithAI(movieTitle, result.productionSection!);
     
     return NextResponse.json({
       movieTitle,
