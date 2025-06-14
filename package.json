@@ -8,7 +8,10 @@
     "start": "next start",
     "lint": "next lint",
     "test": "jest",
-    "test:watch": "jest --watch"
+    "test:watch": "jest --watch",
+    "demo": "scripts/create-demo-gifs.sh",
+    "demo:convert": "scripts/create-demo-gifs.sh convert",
+    "gif": "scripts/simple-gif-convert.sh"
   },
   "dependencies": {
     "@google/generative-ai": "^0.24.1",
